@@ -1,0 +1,1 @@
+global.Redux = require("redux")
