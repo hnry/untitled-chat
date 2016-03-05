@@ -2,8 +2,8 @@
  *  = Events (Event Types) =
  *  There are 2 types...
  *  
- *  There are group events that 
- *  match base on: { event: 'msg', network: 'net', ... }
+ *  There are generic events that 
+ *  match base on: { event: 'msg', ... }
  *
  *  There are specific events or named events that 
  *  match base on:
@@ -49,10 +49,27 @@
  *
  *  Read access is limited to within a routes "/network"
  */
+
 let y = function() {
 
-  function warn(str) {
-    console.warn(str)
+  let warn = () => {
+    // be specific instead of a empty 
+    // fn that returns undefined
+    return false
+  }
+  const _DEBUG = typeof process !== "undefined" && process.env && process.env.NODE_ENV !== "production"
+
+  if (_DEBUG) {
+    warn = (cond, ...msg) => {
+      if (typeof cond !== "boolean") {
+        cond = !!cond
+      }
+      if (cond === true) {
+        console.warn(...msg)
+        return true
+      }
+      return false
+    }
   }
  
   function store(state = {}, action) {
@@ -95,12 +112,11 @@ let y = function() {
     receive(payload) {
       const type = payload.event
 
-      if (!type) {
-        warn("Invalid event passed to router#receive")
+      if (warn(!type, "Invalid event passed to router#receive")) {
         return
       }
-      if (!this._events[type]) {
-        warn("Received event [" + type + "] but no handlers found")
+
+      if (warn(!this._events[type], "Received event [", type, "] but no handlers found")) {
         return
       }
 
@@ -116,9 +132,7 @@ let y = function() {
           v = this._views[group][name][type]
         } 
 
-        if (!v) {
-          warn("Expected event " + type + " (" + group + ", " + name + ") to have view, but none found -- If ok this is safe to ignore")
-        } else {
+        if (!warn(!v, "Expected event ", type, " (", group, ", ", name, ") to have view, but none found -- If ok this is safe to ignore")) {
           if (this._viewHandlers[type]) {
             this._viewHandlers[type].forEach((fn) => {
               r.push(fn)
@@ -126,6 +140,7 @@ let y = function() {
           }
           r.push(v)
         }
+
       }
 
       this._run_route(r, payload)
@@ -161,8 +176,7 @@ let y = function() {
      *  for setting or replacing generic events
      */
     set_event(event, fn) {
-      if (typeof event !== "string" || typeof fn !== "function") {
-        warn("Error setting event handler, expect (string, function) got (" + typeof event + ", " + typeof fn + ")") 
+      if (warn(typeof event !== "string" || typeof fn !== "function", "Error setting event handler, expect (string, function) got (", typeof event, ",", typeof fn, ")")) {
         return
       }
       this._events[event] = fn
@@ -175,21 +189,81 @@ let y = function() {
      *  named events
      */
     register(named_event, fn) {
-      routes.push({ event: uid_event, fn })
-    },
+      const group = named_event.network
+          , name = named_event.name
+          , event = named_event.event
 
-    unregister(named_event) {
+      if (warn(!group || !name || !event, "Registering a view requires a 'named' event")) {
+        return
+      }
 
+      if (!router._views[group]) {
+        router._views[group] = {}
+      }
+
+      if (!router._views[group][name]) {
+        router._views[group][name] = {}
+      }
+
+      router._views[group][name][event] = fn
     },
 
     /*
-     * set pre-render handlers for 
-     * a generic event type
-     *
-     * to be called when route is triggered
+     *  There can only be 1 function
+     *  for a named event for a view
+     */
+    unregister(named_event) {
+      const group = named_event.network
+          , name = named_event.name
+          , event = named_event.event
+      
+      if (warn(!group || !name || !event, "Unregistering a view requires a 'named' event")) {
+        return
+      }
+
+      if (!warn(!router._views[group] || !router._views[group][name] || !router._views[group][name][event], "Expected to unregister view, but no view found")) {
+        router._views[group][name][event] = null
+      }     
+    },
+
+    /*
+     *  takes (and applies to) generic events in either
+     *  obj or string type
+     *  but it is for the construction of view routes
+     *  
+     *  use this to set general processing for every view
+     *  that matches this generic event
      */
     handlers(event_type, arr_funs) {
-      router._viewHandlers[event_type] = arr_funs
+      // find the event type (the string)
+      let type = ''
+      if (typeof event_type === "string") {
+        type = event_type
+      } else if (typeof event_type === "object" && event_type.event) {
+        type = event_type.event
+      }
+
+      if (warn(!type, "Call to handlers cannot find event type")) {
+        return
+      }
+
+      // type check arr_funs is array
+      if (warn(!Array.isArray(arr_funs), "Called handlers with invalid arguments")) {
+        return
+      }
+
+      // type check array as functions
+      if (_DEBUG) {
+        const arr_check = arr_funs.every((fn) => {
+          return typeof fn === "function"
+        })
+
+        if (warn(!arr_check, "Called handlers with invalid arguments")) {
+          return
+        }
+      }
+
+      router._viewHandlers[type] = arr_funs.slice(0)
     }
   }
 
@@ -213,9 +287,9 @@ let y = function() {
   }
 
   return {
+    warn,
     router,
     view,
-    controller,
     mixin
   }
 }
