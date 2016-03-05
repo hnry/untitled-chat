@@ -1,9 +1,12 @@
 import lib from "../src/lib"
 
-let y, router, view
+let y
+  , router
+  , view
+
+const console_reset = console.warn
 
 describe("lib.view", () => {
-  const console_reset = console.warn
 
   beforeEach(() => {
     y = lib()

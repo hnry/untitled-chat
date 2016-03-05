@@ -1,35 +1,14 @@
 import lib from "../src/lib"
 
 let y, router
+const console_reset = console.warn
 
 describe("lib.router", () => {
-  const console_reset = console.warn
 
   beforeEach(() => {
     y = lib()
     router = y.router
-  })
-
-  describe("warn", () => {
-    afterEach(() => {
-      console.warn = console_reset
-    })
-
-    it("only warns in debugging")
-
-    it("tests condition to be true, returns result of condition", (done) => {
-      console.warn = (...str) => {
-        expect(str.join(" ")).toBe("hi test")
-        done()
-      }
-
-      let result = y.warn(1 === 2, "doesn't warn")
-      expect(result).toBe(false)
-
-      const truthy = {}
-      result = y.warn(truthy, "hi", "test")
-      expect(result).toBe(true)
-    })
+    console.warn = console_reset
   })
 
   describe("receive", () => {

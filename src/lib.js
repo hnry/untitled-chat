@@ -197,6 +197,10 @@ let y = function() {
         return
       }
 
+      if (warn(typeof fn !== "function", "Registering a view without a function")) {
+        return
+      }
+
       if (!router._views[group]) {
         router._views[group] = {}
       }
@@ -280,7 +284,7 @@ let y = function() {
         })
 
         this.on("before-unmount", () => {
-          view.unregister(sig, fn)
+          view.unregister(sig)
         })
       }
     }
