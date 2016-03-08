@@ -13,7 +13,7 @@ watch-riot:
 	node_modules/.bin/riot -w views app/tags.js
 
 test:
-	@node_modules/.bin/jasmine JASMINE_CONFIG_PATH=spec/support/jasmine.json
+	@node_modules/.bin/jasmine JASMINE_CONFIG_PATH=spec/support/jasmine.json ${file}
 
 debug:
 	open /Applications/Google\ Chrome\ Canary.app --args --allow-file-access-from-files

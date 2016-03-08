@@ -71,29 +71,20 @@ let y = function() {
       return false
     }
   }
- 
-  function store(state = {}, action) {
-    switch(action.type) {
-      case "":
-        return state
-      default:
-        return state
-    }
-  }
+
   // state = {
-  //  _$network: {
+  //  $network: {
   //    nick: ...,
   //    rooms: ...,
   //    connected: ...
   //    _$name: {
   //      userlist: ...
-  //    },
-  //    $name: {
-  //      ...
   //    }
+  //  },
+  //  $network2: {
+  //    ...
   //  }
   // }
-  const state = Redux.createStore(store)
 
   // event router (not a url router)
   const router = {
@@ -106,7 +97,7 @@ let y = function() {
      *  entry point -> takes a event
      *    calls the generic event handler ->
      *    if possible, constructs a view handler route ->
-     *      finds controller based on generic event
+     *      finds controller / view handlers based on generic event
      *      finds view based on uid event
      */
     receive(payload) {
@@ -170,6 +161,17 @@ let y = function() {
 
       // TODO give state access...
       routes[i](payload, {}, next)
+      this._dispatch(payload)
+    },
+
+    _dispatch(data) {
+      if (data.type) {
+        // TODO warning, reserved property found
+      }
+
+      data.type = data.event
+      store.dispatch(data)
+      return store.getState()
     },
 
     /*
@@ -184,6 +186,8 @@ let y = function() {
   }
 
   const view = {
+    prop_name: "opts",
+
     /*
      *  register a view render component for 
      *  named events
@@ -277,7 +281,10 @@ let y = function() {
   function mixin(event, fn) {
     return {
       init() {
-        const sig = { event: event, network: this.opts.network, name: this.opts.name }
+        const sig = { 
+          event: event, 
+          network: this[view.prop_name].network, 
+          name: this[view.prop_name].name }
 
         this.on("before-mount", () => {
           view.register(sig, fn)
@@ -290,10 +297,81 @@ let y = function() {
     }
   }
 
+  // only for plain objects
+  function copy_obj(src) {
+    if (typeof src !== "object") {
+      return src
+    }
+
+    const n = Object.assign({}, src)
+    Object.keys(n).forEach(k => {
+      if (typeof src[k] === "object") {
+        n[k] = copy_obj(src[k])
+      }
+    })
+    return n
+  }
+
+  const reducer = (state = {}, action) => {
+    const prefix = "_$"
+        , type = action.event       // required
+        , network = action.network  // required
+        , name = action.name || ""
+        , p_name = prefix + name
+        , reduce = router._events[type]
+
+    if (!reduce) {
+      return state
+    }
+
+    // TODO strip action of "type"
+    const pass_state = copy_obj(state[network])
+    const result = reduce(action, pass_state)
+    // make a copy of result to clear outside fn refs
+    // from being passed back in
+    const copied_r = copy_obj(result)
+
+    /*
+     *  Even though this doesn't copy, it's here because:
+     *  - it helps readability from here on out
+     *  - in case future changes need to be made, 
+     *    it's convienant
+     *
+     *  No copying actually needs to happen here because
+     *  nothing outside this function should have
+     *  refs to state since copying happens when passing
+     *  state to sub-reducers
+     *  This is the same result but just done in a 
+     *  different order than redux examples and is
+     *  much easier to implement in this use case
+     */
+    const new_state = state
+
+    // first pass, init defaults
+    if (!new_state[network]) 
+        new_state[network] = {}
+    if (name && !new_state[network][p_name])
+        new_state[network][p_name] = {}
+
+    // write to the new state
+    if (copied_r !== undefined) {
+      if (name) {
+        new_state[network][p_name][type] = copied_r
+      } else {
+        new_state[network][type] = copied_r
+      }
+    }
+
+    return new_state
+  }
+
+  const store = Redux.createStore(reducer)
+
   return {
     warn,
     router,
     view,
+    _reducer: reducer,
     mixin
   }
 }

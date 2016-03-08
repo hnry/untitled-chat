@@ -73,6 +73,12 @@ describe("lib - misc", () => {
       mix.init.call(mock)
     })
 
+    /*
+     *  Given a riotjs component, it will search
+     *  this[view.prop_name].name and this.name
+     */
+    it("searches for named event information from prop_name as well as the component")
+
     it("provides a _helpful_ warning when the mixin cannot infer a named event")
 
     it("warns on type mismatch, expects (str, fn)")
